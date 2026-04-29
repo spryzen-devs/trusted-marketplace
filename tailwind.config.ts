@@ -13,7 +13,17 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+        sans: ['"Work Sans"', 'system-ui', 'sans-serif'],
+      },
       colors: {
+        emerald: {
+          DEFAULT: "hsl(var(--emerald))",
+          soft: "hsl(var(--emerald-soft))",
+          deep: "hsl(var(--emerald-deep))",
+        },
+        warning: "hsl(var(--warning))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -59,9 +69,11 @@ export default {
         },
       },
       borderRadius: {
+        "2xl": "1.25rem",
+        xl: "1rem",
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
       },
       keyframes: {
         "accordion-down": {
