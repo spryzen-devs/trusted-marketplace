@@ -49,7 +49,7 @@ export default function Header() {
             className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary transition-colors"
           >
             {isSeller ? <ShoppingBag className="h-3.5 w-3.5" /> : <Store className="h-3.5 w-3.5" />}
-            {isSeller ? "Buyer view" : "Seller view"}
+            {isSeller ? "Switch to Buyer" : "Switch to Seller"}
           </NavLink>
         </div>
       </div>

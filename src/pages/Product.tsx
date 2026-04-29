@@ -1,16 +1,76 @@
 import Header from "@/components/Header";
 import VerifiedBadge from "@/components/VerifiedBadge";
-import { products } from "@/data/products";
 import { ChevronLeft, ChevronRight, Info, ShieldCheck, Tag } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { Product as ProductType } from "@/data/products";
+import { toast } from "sonner";
 
 export default function Product() {
   const { id } = useParams();
-  const product = products.find((p) => p.id === id) ?? products[0];
-  const [size, setSize] = useState(product.sizes[0]);
-  const [angle, setAngle] = useState(0);
   const navigate = useNavigate();
+
+  const { data: product, isLoading } = useQuery({
+    queryKey: ['product', id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data as ProductType;
+    }
+  });
+
+  const [size, setSize] = useState("");
+  const [angle, setAngle] = useState(0);
+
+  useEffect(() => {
+    if (product?.sizes?.length) {
+      setSize(product.sizes[0]);
+    }
+  }, [product]);
+
+  const orderMutation = useMutation({
+    mutationFn: async () => {
+      if (!product) throw new Error("No product");
+      const { data, error } = await supabase.from('orders').insert({
+        user_id: 'user-1',
+        seller_id: 'seller-1',
+        product_id: product.id,
+        status: 'new' // mapping 'ORDERED' from prompt to 'new' which matches the existing statusStyles in SellerDashboard
+      }).select().single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Order placed successfully!");
+      navigate("/orders");
+    },
+    onError: (error) => {
+      toast.error("Failed to place order: " + error.message);
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container py-20 text-center">Product not found.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -51,7 +111,7 @@ export default function Product() {
           <div className="mt-8">
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Size</p>
             <div className="flex gap-2 flex-wrap">
-              {product.sizes.map((s) => (
+              {product.sizes?.map((s) => (
                 <button
                   key={s}
                   onClick={() => setSize(s)}
@@ -96,10 +156,11 @@ export default function Product() {
           </div>
 
           <button
-            onClick={() => navigate("/orders")}
-            className="mt-8 w-full h-14 rounded-full bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors"
+            onClick={() => orderMutation.mutate()}
+            disabled={orderMutation.isPending}
+            className="mt-8 w-full h-14 rounded-full bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors disabled:opacity-70"
           >
-            Buy now · ${product.price}
+            {orderMutation.isPending ? "Processing..." : `Buy now · $${product.price}`}
           </button>
           <p className="text-xs text-muted-foreground mt-3 inline-flex items-center gap-1.5">
             <Info className="h-3 w-3" /> 24-hour verified return window after delivery

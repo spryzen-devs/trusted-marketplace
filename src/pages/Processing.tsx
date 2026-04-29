@@ -1,14 +1,17 @@
 import Header from "@/components/Header";
 import { ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function Processing() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get('order');
+
   useEffect(() => {
-    const t = setTimeout(() => navigate("/result"), 2800);
+    const t = setTimeout(() => navigate(`/result?order=${orderId}`), 2800);
     return () => clearTimeout(t);
-  }, [navigate]);
+  }, [navigate, orderId]);
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,14 +1,28 @@
 import Header from "@/components/Header";
 import { Link } from "react-router-dom";
-import { products, categories, sellers } from "@/data/products";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { Product } from "@/data/products";
 
 const Index = () => {
   const [cat, setCat] = useState("All");
   const [seller, setSeller] = useState("All Sellers");
   const [q, setQ] = useState("");
+
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('products').select('*');
+      if (error) throw error;
+      return data as Product[];
+    }
+  });
+
+  const dynamicCategories = ["All", ...new Set(products.map(p => p.category))];
+  const dynamicSellers = ["All Sellers", ...new Set(products.map(p => p.seller))];
 
   const filtered = products.filter(
     (p) =>
@@ -48,7 +62,7 @@ const Index = () => {
             />
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {categories.map((c) => (
+            {dynamicCategories.map((c) => (
               <button
                 key={c}
                 onClick={() => setCat(c)}
@@ -66,7 +80,7 @@ const Index = () => {
               onChange={(e) => setSeller(e.target.value)}
               className="appearance-none h-12 rounded-full border border-border bg-card pl-10 pr-8 text-sm cursor-pointer hover:bg-secondary"
             >
-              {sellers.map((s) => <option key={s}>{s}</option>)}
+              {dynamicSellers.map((s) => <option key={s}>{s}</option>)}
             </select>
             <SlidersHorizontal className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>
@@ -75,39 +89,47 @@ const Index = () => {
 
       {/* Grid */}
       <section className="container py-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filtered.map((p, i) => (
-            <Link
-              to={`/product/${p.id}`}
-              key={p.id}
-              className="group animate-fade-up"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <div className="overflow-hidden rounded-2xl bg-secondary aspect-[4/5] shadow-card">
-                <img
-                  src={p.image}
-                  alt={p.name}
-                  loading="lazy"
-                  width={800}
-                  height={1024}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              </div>
-              <div className="pt-3 px-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-serif text-xl leading-tight">{p.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{p.seller}</p>
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {filtered.map((p, i) => (
+                <Link
+                  to={`/product/${p.id}`}
+                  key={p.id}
+                  className="group animate-fade-up"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <div className="overflow-hidden rounded-2xl bg-secondary aspect-[4/5] shadow-card">
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      loading="lazy"
+                      width={800}
+                      height={1024}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                   </div>
-                  <p className="text-sm font-medium tabular-nums">${p.price}</p>
-                </div>
-                <div className="mt-2"><VerifiedBadge /></div>
-              </div>
-            </Link>
-          ))}
-        </div>
-        {filtered.length === 0 && (
-          <p className="text-center text-muted-foreground py-20">No pieces match those filters.</p>
+                  <div className="pt-3 px-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-serif text-xl leading-tight">{p.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{p.seller}</p>
+                      </div>
+                      <p className="text-sm font-medium tabular-nums">${p.price}</p>
+                    </div>
+                    <div className="mt-2"><VerifiedBadge /></div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {filtered.length === 0 && (
+              <p className="text-center text-muted-foreground py-20">No pieces match those filters.</p>
+            )}
+          </>
         )}
       </section>
 

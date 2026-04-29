@@ -1,7 +1,8 @@
 import Header from "@/components/Header";
-import { products } from "@/data/products";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 function format(secs: number) {
   const h = Math.floor(secs / 3600).toString().padStart(2, "0");
@@ -11,8 +12,27 @@ function format(secs: number) {
 }
 
 export default function ReturnWindow() {
-  const [secs, setSecs] = useState(23 * 3600 + 59 * 60 + 12);
-  const p = products[0];
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get('order');
+  const [secs, setSecs] = useState(23 * 3600 + 59 * 60 + 12); // Start at ~24h for demo
+
+  const { data: order, isLoading } = useQuery({
+    queryKey: ['order-return', orderId],
+    queryFn: async () => {
+      if (!orderId) return null;
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, product:products(*)')
+        .eq('id', orderId)
+        .single();
+      if (error) throw error;
+      return {
+        ...data,
+        product: Array.isArray(data.product) ? data.product[0] : data.product
+      };
+    },
+    enabled: !!orderId
+  });
 
   useEffect(() => {
     const t = setInterval(() => setSecs((s) => Math.max(0, s - 1)), 1000);
@@ -21,6 +41,10 @@ export default function ReturnWindow() {
 
   const { h, m, s } = format(secs);
   const pct = (secs / (24 * 3600)) * 100;
+
+  if (isLoading || !order) return <div className="min-h-screen bg-background"><Header /><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div></div></div>;
+
+  const p = order.product;
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,7 +65,7 @@ export default function ReturnWindow() {
         </div>
 
         <div className="mt-12 rounded-2xl border border-border bg-card p-5 shadow-card flex items-center gap-4 text-left max-w-md mx-auto">
-          <img src={p.image} alt="" className="h-16 w-16 rounded-xl object-cover" />
+          <img src={p.image} alt={p.name} className="h-16 w-16 rounded-xl object-cover" />
           <div className="flex-1">
             <p className="font-medium text-sm">{p.name}</p>
             <p className="text-xs text-muted-foreground">Tag intact · ready for return</p>
@@ -49,10 +73,10 @@ export default function ReturnWindow() {
         </div>
 
         <Link
-          to="/return-capture"
+          to={`/return-capture?order=${order.id}`}
           className="inline-flex items-center justify-center mt-8 h-14 px-10 rounded-full bg-foreground text-background font-medium hover:bg-foreground/90"
         >
-          Request return
+          Proceed to return capture
         </Link>
       </div>
     </div>
