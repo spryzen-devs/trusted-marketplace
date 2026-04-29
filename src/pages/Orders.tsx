@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import Timeline from "@/components/Timeline";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { Link } from "react-router-dom";
+import { Award, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Product } from "@/data/products";
@@ -11,6 +12,7 @@ type OrderWithProduct = {
   status: string;
   delivery_otp?: string;
   proof_condition_photos?: string;
+  tag_id?: string;
   product: Product;
 };
 
@@ -25,6 +27,7 @@ export default function Orders() {
           status,
           delivery_otp,
           proof_condition_photos,
+          tag_id,
           product:products(*)
         `)
         .eq('user_id', 'user-1')
@@ -153,6 +156,16 @@ export default function Orders() {
                         <span className="text-muted-foreground">Total</span>
                         <span className="tabular-nums font-medium">${p.price}</span>
                       </div>
+
+                      {order.tag_id && (
+                        <Link 
+                          to={`/passport/${order.id}`}
+                          className="mt-6 w-full h-11 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald/20 bg-emerald-soft/10 text-emerald-deep font-medium text-sm hover:bg-emerald-soft/30 transition-all group"
+                        >
+                          <Award className="h-4 w-4 group-hover:rotate-12 transition-transform" /> 
+                          View Digital Passport
+                        </Link>
+                      )}
                     </aside>
                   </div>
                 </div>

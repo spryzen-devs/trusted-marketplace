@@ -1,10 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { ShoppingBag, Store, ShieldCheck } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const buyerNav = [
   { to: "/", label: "Shop" },
   { to: "/orders", label: "Orders" },
-  { to: "/return-window", label: "Returns" },
 ];
 
 const sellerNav = [
@@ -44,6 +44,21 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              if (confirm("Clear all orders for demo?")) {
+                const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                if (error) alert(error.message);
+                else {
+                  alert("Orders cleared! Ready for fresh demo.");
+                  window.location.reload();
+                }
+              }
+            }}
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-bold text-red-600 hover:bg-red-100 transition-colors mr-2"
+          >
+            Reset Demo
+          </button>
           <NavLink
             to={isSeller ? "/" : "/seller"}
             className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary transition-colors"

@@ -42,6 +42,21 @@ export default function ReturnWindow() {
   const { h, m, s } = format(secs);
   const pct = (secs / (24 * 3600)) * 100;
 
+  if (!orderId) return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container max-w-2xl py-20 text-center">
+        <h1 className="font-serif text-3xl">Select an order</h1>
+        <p className="text-muted-foreground mt-4 mb-8">
+          To request a return, please go to your Orders page and select the item you wish to return.
+        </p>
+        <Link to="/orders" className="h-12 px-8 rounded-full bg-foreground text-background inline-flex items-center">
+          Go to Orders
+        </Link>
+      </div>
+    </div>
+  );
+
   if (isLoading || !order) return <div className="min-h-screen bg-background"><Header /><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div></div></div>;
 
   const p = order.product;

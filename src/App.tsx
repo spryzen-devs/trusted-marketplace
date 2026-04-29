@@ -17,6 +17,8 @@ import Processing from "./pages/Processing.tsx";
 import Result from "./pages/Result.tsx";
 
 
+import DigitalPassport from "./pages/DigitalPassport.tsx";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -37,6 +39,7 @@ const App = () => (
           <Route path="/return-capture" element={<ReturnCapture />} />
           <Route path="/processing" element={<Processing />} />
           <Route path="/result" element={<Result />} />
+          <Route path="/passport/:orderId" element={<DigitalPassport />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

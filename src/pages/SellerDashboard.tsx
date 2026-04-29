@@ -1,5 +1,5 @@
 import Header from "@/components/Header";
-import { Camera, Check, QrCode, Plus, PackageOpen } from "lucide-react";
+import { Camera, Check, QrCode, Plus, PackageOpen, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -24,7 +24,6 @@ type OrderWithProduct = {
   status: string;
   created_at: string;
   tag_id?: string;
-  delivery_otp?: string;
   proof_condition_photos?: string;
   return_proof_photos?: string;
   product: Product;
@@ -41,7 +40,7 @@ export default function SellerDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select(`id, user_id, status, created_at, tag_id, delivery_otp, proof_condition_photos, return_proof_photos, product:products(*)`)
+        .select(`id, user_id, status, created_at, tag_id, proof_condition_photos, return_proof_photos, product:products(*)`)
         .eq('seller_id', 'seller-1')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -78,11 +77,6 @@ export default function SellerDashboard() {
   const handleAccept = async (id: string) => {
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     await updateStatus(id, 'preparing', { delivery_otp: otp });
-  };
-
-  const handleGenerateTag = async (id: string) => {
-    const tagId = "TAG-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    await updateStatus(id, 'tagged', { tag_id: tagId });
   };
 
   const handleDispatch = async (id: string) => {
@@ -172,11 +166,21 @@ export default function SellerDashboard() {
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {o.status === "new" && <button onClick={() => handleAccept(o.id)} className="h-10 px-4 rounded-full bg-foreground text-background text-sm flex items-center gap-1.5"><Check className="h-4 w-4" /> Accept</button>}
-                    {o.status === "preparing" && !o.proof_condition_photos && <Link to={`/seller/condition?order=${o.id}`} className="h-10 px-4 rounded-full bg-foreground text-background text-sm flex items-center gap-1.5"><Camera className="h-4 w-4" /> Condition</Link>}
-                    {o.status === "preparing" && o.proof_condition_photos && <button onClick={() => handleGenerateTag(o.id)} className="h-10 px-4 rounded-full border border-border text-sm flex items-center gap-1.5"><QrCode className="h-4 w-4" /> Tag</button>}
-                    {o.status === "tagged" && <Link to={`/seller/proof?order=${o.id}`} className="h-10 px-4 rounded-full bg-emerald text-background text-sm flex items-center gap-1.5"><Camera className="h-4 w-4" /> Proof</Link>}
-                    {o.status === "proof_added" && <button onClick={() => handleDispatch(o.id)} className="h-10 px-4 rounded-full bg-foreground text-background text-sm flex items-center gap-1.5"><PackageOpen className="h-4 w-4" /> Ship</button>}
+                    {o.status === "new" && (
+                      <button onClick={() => handleAccept(o.id)} className="h-10 px-6 rounded-full bg-foreground text-background text-sm font-bold flex items-center gap-2 hover:bg-foreground/90 active:scale-95 transition-all shadow-lift">
+                        <Check className="h-4 w-4" /> Accept Order
+                      </button>
+                    )}
+                    {o.status === "preparing" && !o.proof_condition_photos && (
+                      <Link to={`/seller/condition?order=${o.id}`} className="h-10 px-4 rounded-full bg-foreground text-background text-sm flex items-center gap-1.5 hover:bg-foreground/90">
+                        <Camera className="h-4 w-4" /> Verify & Tag Item
+                      </Link>
+                    )}
+                    {o.status === "proof_added" && (
+                      <button onClick={() => handleDispatch(o.id)} className="h-10 px-4 rounded-full bg-emerald text-background text-sm flex items-center gap-1.5 hover:bg-emerald-deep font-bold shadow-lift">
+                        <PackageOpen className="h-4 w-4" /> Confirm Shipment
+                      </button>
+                    )}
                     {o.status === "dispatched" && <Link to={`/delivery-otp?order=${o.id}`} className="h-10 px-4 rounded-full border border-border text-sm inline-flex items-center gap-1.5 hover:bg-secondary">Confirm Delivery (OTP)</Link>}
                   </div>
                 </div>
@@ -194,7 +198,7 @@ export default function SellerDashboard() {
                     <p className="font-medium">{o.product.name}</p>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Order #{o.id.slice(0, 8)}</p>
                   </div>
-                  <div className="rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-xs font-medium">
+                  <div className={`rounded-full px-3 py-1 text-xs font-medium ${o.status === 'return_requested' ? 'bg-blue-100 text-blue-800' : o.status === 'return_approved' ? 'bg-emerald-soft text-emerald-deep' : 'bg-red-50 text-red-600'}`}>
                     {o.status === 'return_requested' ? 'Review required' : o.status === 'return_approved' ? 'Approved' : 'Rejected'}
                   </div>
                 </div>
@@ -202,18 +206,18 @@ export default function SellerDashboard() {
                 {o.status === 'return_requested' && o.proof_condition_photos && o.return_proof_photos && (
                   <div className="grid md:grid-cols-2 gap-8 mb-8">
                     <div>
-                      <p className="text-sm font-medium mb-3">Your Pre-Dispatch Photos</p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Original Proof</p>
+                      <div className="grid grid-cols-2 gap-3">
                         {JSON.parse(o.proof_condition_photos).slice(0, 4).map((photo: string, idx: number) => (
-                          <img key={idx} src={photo} alt="Seller proof" className="w-full aspect-square object-cover rounded-xl border border-border" />
+                          <img key={idx} src={photo} alt="Seller proof" className="w-full aspect-square object-cover rounded-2xl border border-border shadow-soft" />
                         ))}
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm font-medium mb-3">Buyer's Return Photos</p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Return Proof</p>
+                      <div className="grid grid-cols-2 gap-3">
                         {JSON.parse(o.return_proof_photos).map((photo: string, idx: number) => (
-                          <img key={idx} src={photo} alt="Buyer proof" className="w-full aspect-square object-cover rounded-xl border border-border" />
+                          <img key={idx} src={photo} alt="Buyer proof" className="w-full aspect-square object-cover rounded-2xl border border-border shadow-soft" />
                         ))}
                       </div>
                     </div>
@@ -221,11 +225,17 @@ export default function SellerDashboard() {
                 )}
 
                 {o.status === 'return_requested' && (
-                  <div className="flex gap-4 pt-4 border-t border-border">
-                    <button onClick={() => updateStatus(o.id, 'return_rejected')} className="flex-1 h-12 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-medium transition-colors">
+                  <div className="flex gap-4 pt-6 border-t border-border">
+                    <button 
+                      onClick={() => updateStatus(o.id, 'return_rejected')} 
+                      className="flex-1 h-14 rounded-2xl border-2 border-red-100 text-red-600 bg-red-50 hover:bg-red-100 font-bold transition-all active:scale-95"
+                    >
                       Reject (Fraud Detected)
                     </button>
-                    <button onClick={() => updateStatus(o.id, 'return_approved')} className="flex-1 h-12 rounded-xl bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors">
+                    <button 
+                      onClick={() => updateStatus(o.id, 'return_approved')} 
+                      className="flex-1 h-14 rounded-2xl bg-foreground text-background font-bold hover:bg-foreground/90 transition-all active:scale-95"
+                    >
                       Accept Return
                     </button>
                   </div>
