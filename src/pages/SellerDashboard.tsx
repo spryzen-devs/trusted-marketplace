@@ -16,6 +16,9 @@ const statusStyles: Record<string, string> = {
   proof_added: "bg-foreground text-background",
   dispatched: "bg-foreground text-background",
   delivered: "bg-muted text-muted-foreground",
+  return_requested: "bg-blue-100 text-blue-800",
+  return_approved: "bg-emerald-soft text-emerald-deep",
+  return_rejected: "bg-red-50 text-red-600",
 };
 
 type OrderWithProduct = {
@@ -71,7 +74,10 @@ export default function SellerDashboard() {
   const updateStatus = async (id: string, newStatus: string, extraUpdates: any = {}) => {
     const { error } = await supabase.from('orders').update({ status: newStatus, ...extraUpdates }).eq('id', id);
     if (error) toast.error("Failed to update: " + error.message);
-    else toast.success(`Order marked as ${newStatus}`);
+    else {
+      toast.success(`Order marked as ${newStatus}`);
+      queryClient.invalidateQueries({ queryKey: ['seller-orders'] });
+    }
   };
 
   const handleAccept = async (id: string) => {
@@ -203,22 +209,34 @@ export default function SellerDashboard() {
                   </div>
                 </div>
 
-                {o.status === 'return_requested' && o.proof_condition_photos && o.return_proof_photos && (
+                {o.status === 'return_requested' && (
                   <div className="grid md:grid-cols-2 gap-8 mb-8">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Original Proof</p>
                       <div className="grid grid-cols-2 gap-3">
-                        {JSON.parse(o.proof_condition_photos).slice(0, 4).map((photo: string, idx: number) => (
-                          <img key={idx} src={photo} alt="Seller proof" className="w-full aspect-square object-cover rounded-2xl border border-border shadow-soft" />
-                        ))}
+                        {o.proof_condition_photos ? (
+                          JSON.parse(o.proof_condition_photos).slice(0, 4).map((photo: string, idx: number) => (
+                            <img key={idx} src={photo} alt="Seller proof" className="w-full aspect-square object-cover rounded-2xl border border-border shadow-soft" />
+                          ))
+                        ) : (
+                          <div className="col-span-2 py-10 border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-xs text-muted-foreground italic">
+                            No original photos uploaded.
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Return Proof</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Return Proof (Forensic Bundle)</p>
                       <div className="grid grid-cols-2 gap-3">
-                        {JSON.parse(o.return_proof_photos).map((photo: string, idx: number) => (
-                          <img key={idx} src={photo} alt="Buyer proof" className="w-full aspect-square object-cover rounded-2xl border border-border shadow-soft" />
-                        ))}
+                        {o.return_proof_photos ? (
+                          JSON.parse(o.return_proof_photos).map((photo: string, idx: number) => (
+                            <img key={idx} src={photo} alt="Buyer proof" className="w-full aspect-square object-cover rounded-2xl border border-border shadow-soft" />
+                          ))
+                        ) : (
+                          <div className="col-span-2 py-10 border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-xs text-muted-foreground italic">
+                            Waiting for forensic upload...
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,9 +1,10 @@
 import Header from "@/components/Header";
 import Timeline from "@/components/Timeline";
 import VerifiedBadge from "@/components/VerifiedBadge";
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Award, ShieldCheck } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Product } from "@/data/products";
 
@@ -17,6 +18,8 @@ type OrderWithProduct = {
 };
 
 export default function Orders() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['user-orders'],
     queryFn: async () => {
@@ -27,6 +30,7 @@ export default function Orders() {
           status,
           delivery_otp,
           proof_condition_photos,
+          return_proof_photos,
           tag_id,
           product:products(*)
         `)
@@ -41,6 +45,14 @@ export default function Orders() {
       })) as OrderWithProduct[];
     }
   });
+
+  useEffect(() => {
+    const channel = supabase.channel('buyer_orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'user_id=eq.user-1' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-orders'] });
+      }).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -69,17 +81,17 @@ export default function Orders() {
           <div className="space-y-12">
             {orders.map((order) => {
               const p = order.product;
-              const isPreparing = ['preparing', 'tagged', 'proof_added'].includes(order.status);
+              const isPreparing = ['preparing', 'tagged', 'proof_added', 'confirmed'].includes(order.status);
               const isDispatched = order.status === 'dispatched';
-              const isDelivered = ['delivered', 'return_requested', 'return_approved', 'return_rejected'].includes(order.status);
-              const isReturning = ['return_requested', 'return_approved', 'return_rejected'].includes(order.status);
+              const isDelivered = ['delivered', 'return_requested', 'return_approved', 'return_rejected', 'return_pending'].includes(order.status);
+              const isReturning = ['return_requested', 'return_approved', 'return_rejected', 'return_pending'].includes(order.status);
 
               return (
                 <div key={order.id} className="relative">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Order #{order.id.slice(0, 8)}</p>
                   
                   <div className="grid md:grid-cols-[1fr_280px] gap-6">
-                    <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+                    <div className="rounded-2xl border border-border bg-card p-6 shadow-card h-fit">
                       {order.status === 'new' ? (
                         <div className="inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1 text-xs font-medium text-foreground">
                           <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse" />
@@ -88,7 +100,7 @@ export default function Orders() {
                       ) : isReturning ? (
                         <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                          {order.status === 'return_requested' ? 'Return processing' : order.status === 'return_approved' ? 'Return approved' : 'Return rejected'}
+                          {order.status === 'return_approved' ? 'Return approved' : order.status === 'return_rejected' ? 'Return rejected' : 'Return processing'}
                         </div>
                       ) : (
                         <div className="inline-flex items-center gap-2 rounded-full bg-emerald/15 px-3 py-1 text-xs font-medium text-emerald-deep">
@@ -101,20 +113,20 @@ export default function Orders() {
                       <Timeline
                         steps={[
                           { label: "Ordered", done: true },
-                          { label: "Seller preparing", active: isPreparing, done: isDispatched || isDelivered },
+                          { label: "Seller preparing", active: isPreparing && !isDispatched && !isDelivered, done: isDispatched || isDelivered },
                           { label: "Dispatched", active: isDispatched, done: isDelivered },
                           { label: "Delivered", active: isDelivered, done: isDelivered },
                         ]}
                       />
 
-                      {order.status === 'delivered' && (
+                      {(order.status === 'delivered' || (order.status === 'confirmed' && !isReturning)) && (
                         <div className="mt-8 pt-6 border-t border-border">
-                          <Link 
-                            to={`/return-window?order=${order.id}`}
-                            className="w-full h-12 flex items-center justify-center rounded-xl border border-border bg-secondary hover:bg-secondary/80 font-medium text-sm transition-colors"
+                          <button 
+                            onClick={() => navigate(`/return-scanner?order=${order.id}`)}
+                            className="w-full h-12 flex items-center justify-center rounded-xl border border-border bg-foreground text-background font-bold text-sm hover:bg-foreground/90 transition-all shadow-lift"
                           >
-                            Request a Return
-                          </Link>
+                            Request a Return (Scan Required)
+                          </button>
                         </div>
                       )}
 
@@ -125,22 +137,7 @@ export default function Orders() {
                             <p className="font-mono text-4xl font-bold tracking-widest">{order.delivery_otp}</p>
                             <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">
                               Share this code with your courier to receive the package safely. 
-                              This confirms the handover.
                             </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {order.proof_condition_photos && (
-                        <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card">
-                          <div className="bg-emerald-soft px-4 py-3 border-b border-emerald/20 flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-emerald flex-shrink-0" />
-                            <p className="text-xs font-medium text-emerald-deep">Pre-dispatch Condition Photos</p>
-                          </div>
-                          <div className="p-4 grid grid-cols-2 gap-3 bg-secondary/20">
-                            {JSON.parse(order.proof_condition_photos).map((photo: string, idx: number) => (
-                              <img key={idx} src={photo} alt={`Condition ${idx + 1}`} className="w-full aspect-square object-cover rounded-xl border border-border shadow-soft" />
-                            ))}
                           </div>
                         </div>
                       )}
@@ -152,19 +149,19 @@ export default function Orders() {
                       </div>
                       <h3 className="font-serif text-xl">{p.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{p.seller}</p>
-                      <div className="mt-4 pt-4 border-t border-border flex justify-between text-sm">
+                      
+                      <div className="mt-4 pt-4 border-t border-border flex justify-between text-sm mb-6">
                         <span className="text-muted-foreground">Total</span>
                         <span className="tabular-nums font-medium">${p.price}</span>
                       </div>
 
                       {order.tag_id && (
-                        <Link 
-                          to={`/passport/${order.id}`}
-                          className="mt-6 w-full h-11 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald/20 bg-emerald-soft/10 text-emerald-deep font-medium text-sm hover:bg-emerald-soft/30 transition-all group"
-                        >
-                          <Award className="h-4 w-4 group-hover:rotate-12 transition-transform" /> 
-                          View Digital Passport
-                        </Link>
+                        <div className="p-4 rounded-xl bg-secondary/50 border border-border flex items-center gap-3">
+                          <ShieldCheck className="h-5 w-5 text-emerald-deep" />
+                          <p className="text-[10px] font-bold text-emerald-deep uppercase tracking-widest leading-tight">
+                            Asset Identity <br/> Locked & Sealed
+                          </p>
+                        </div>
                       )}
                     </aside>
                   </div>

@@ -15,6 +15,9 @@ import ReturnWindow from "./pages/ReturnWindow.tsx";
 import ReturnCapture from "./pages/ReturnCapture.tsx";
 import Processing from "./pages/Processing.tsx";
 import Result from "./pages/Result.tsx";
+import ReturnScanner from "./pages/ReturnScanner.tsx";
+import AIDiagnostic from "./pages/AIDiagnostic.tsx";
+import LabTest from "./pages/LabTest.tsx";
 
 
 import DigitalPassport from "./pages/DigitalPassport.tsx";
@@ -36,9 +39,12 @@ const App = () => (
           <Route path="/seller/proof" element={<SellerProof />} />
           <Route path="/delivery-otp" element={<DeliveryOtp />} />
           <Route path="/return-window" element={<ReturnWindow />} />
+          <Route path="/return-scanner" element={<ReturnScanner />} />
           <Route path="/return-capture" element={<ReturnCapture />} />
           <Route path="/processing" element={<Processing />} />
           <Route path="/result" element={<Result />} />
+          <Route path="/ai-diagnostic" element={<AIDiagnostic />} />
+          <Route path="/lab" element={<LabTest />} />
           <Route path="/passport/:orderId" element={<DigitalPassport />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

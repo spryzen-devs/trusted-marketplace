@@ -1,6 +1,6 @@
 import Header from "@/components/Header";
 import CameraFrame from "@/components/CameraFrame";
-import { Check } from "lucide-react";
+import { Check, Camera } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
@@ -38,15 +38,24 @@ export default function ReturnCapture() {
       if (error) throw error;
     },
     onSuccess: () => {
-      navigate(`/processing?order=${orderId}`);
+      // Pass the filename of the first image to help detection
+      const firstFileName = document.querySelector('input[type="file"]')?.files?.[0]?.name || "unknown";
+      navigate(`/ai-diagnostic?order=${orderId}&filename=${encodeURIComponent(firstFileName)}`);
     },
     onError: (e) => {
       toast.error(e.message);
     }
   });
 
-  const handleCapture = (base64: string) => {
-    setImages(prev => ({ ...prev, [steps[step].key]: base64 }));
+  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImages(prev => ({ ...prev, [steps[step].key]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const next = () => {
@@ -67,7 +76,13 @@ export default function ReturnCapture() {
       <Header />
       <div className="container max-w-md py-8">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Return capture · {step + 1}/{steps.length}</p>
-        <h1 className="font-serif text-3xl mt-1">{steps[step].label}</h1>
+        
+        <div className="flex items-center justify-between mt-1">
+          <h1 className="font-serif text-3xl">{steps[step].label}</h1>
+          <div className="px-2 py-1 bg-red-50 rounded-full text-[9px] font-bold text-red-600 uppercase tracking-widest flex items-center gap-1 border border-red-100">
+            <Camera className="h-3 w-3" /> Live Only
+          </div>
+        </div>
 
         <div className="mt-4 mb-6">
           <div className="h-1 rounded-full bg-secondary overflow-hidden">
@@ -75,7 +90,24 @@ export default function ReturnCapture() {
           </div>
         </div>
 
-        <CameraFrame key={step} label={steps[step].label} hint={steps[step].hint} onCapture={handleCapture} />
+        <div className="aspect-square relative rounded-2xl bg-secondary border-2 border-dashed border-border overflow-hidden group">
+          {images[steps[step].key] ? (
+            <img src={images[steps[step].key]} className="h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+              <p className="text-sm text-muted-foreground">{steps[step].hint}</p>
+            </div>
+          )}
+          <label className="absolute inset-0 cursor-pointer">
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment"
+              className="hidden" 
+              onChange={handleCapture} 
+            />
+          </label>
+        </div>
 
         <ul className="mt-5 space-y-2">
           {checklist.map((c) => (

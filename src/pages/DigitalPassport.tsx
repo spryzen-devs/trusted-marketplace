@@ -2,8 +2,9 @@ import Header from "@/components/Header";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { ShieldCheck, Calendar, User, Hash, Share2, Award } from "lucide-react";
+import { ShieldCheck, Calendar, User, Hash, Share2, Award, QrCode } from "lucide-react";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function DigitalPassport() {
   const { orderId } = useParams();
@@ -44,8 +45,22 @@ export default function DigitalPassport() {
           <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
 
           <div className="relative p-10 pt-16 text-center">
-            <div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-full bg-foreground text-background shadow-lift">
-              <ShieldCheck className="h-12 w-12" />
+            {/* Cryptographic QR Section */}
+            <div className="mx-auto mb-10 p-6 bg-white rounded-[32px] border border-secondary shadow-soft inline-block relative group">
+              <div className="absolute -inset-2 bg-gradient-to-r from-emerald to-blue-500 rounded-[36px] opacity-10 group-hover:opacity-20 transition-opacity blur" />
+              {order.qr_payload ? (
+                <QRCodeSVG 
+                  value={JSON.stringify(order.qr_payload)} 
+                  size={160}
+                  level="H"
+                  includeMargin={false}
+                  className="rounded-lg relative"
+                />
+              ) : (
+                <div className="h-40 w-40 flex items-center justify-center bg-secondary rounded-lg">
+                  <QrCode className="h-10 w-10 text-muted-foreground opacity-20" />
+                </div>
+              )}
             </div>
             
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-deep">Official Authentication</p>
